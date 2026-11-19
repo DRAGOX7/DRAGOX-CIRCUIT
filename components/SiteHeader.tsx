@@ -1,4 +1,5 @@
-import { ArrowUpRight, Download } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
+import { ChipButton } from "./ChipButton";
 import { portfolioUrl, repoUrl } from "@/lib/site";
 import { GitHubMark } from "./GitHubMark";
 
@@ -50,13 +51,9 @@ export function SiteHeader() {
           >
             <GitHubMark className="h-[18px] w-[18px]" />
           </a>
-          <a
-            href="#download"
-            className="liquid-control liquid-control-pill liquid-control-primary inline-flex min-h-10 items-center gap-2 px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-          >
-            <Download className="h-4 w-4" aria-hidden="true" />
+          <ChipButton href="#download" size="sm">
             Download
-          </a>
+          </ChipButton>
         </nav>
       </div>
     </header>

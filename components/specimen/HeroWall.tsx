@@ -1,76 +1,135 @@
 import type { CSSProperties } from "react";
+import specimen from "@/public/dragox-specimen.json";
+import { HeroWave } from "./HeroWave";
+import { dotsToPoints, layoutWord, type GlyphStyle, type SpecimenData } from "./data";
 
 type Word = {
-  text: string;
-  family: "display" | "clean";
-  /** OpenType features, e.g. '"ss01" 1'. */
-  features?: string;
+  /** Glyph names, laid out with the font's advances and kerning. */
+  glyphs: string[];
+  style: GlyphStyle;
   color: string;
-  /** Font size as a fraction of the base row size. */
+  /** Size relative to the row's base size. */
   scale: number;
-  /** What the word shows off, for the hover label. */
-  note: string;
 };
 
-// Each row fills the width; words mix the two families, the stub-free set, the AJ ligature
+const g = (text: string) => text.split("");
+const DIGITS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+
+// Rows mix the circuit drawing, the stub-free set, the Clean family, the AJ ligature, figures
 // and the lowercase small caps, in the tester's trace colors.
 const ROWS: Word[][] = [
   [
-    { text: "DRAGOX", family: "display", color: "var(--color-accent)", scale: 1, note: "Circuit" },
-    { text: "AJ", family: "display", features: '"dlig" 1', color: "#fb7185", scale: 0.8, note: "dlig" },
+    { glyphs: g("DRAGOX"), style: "default", color: "var(--color-accent)", scale: 1 },
+    { glyphs: ["A_J"], style: "default", color: "#fb7185", scale: 0.8 },
   ],
   [
-    { text: "CIRCUIT", family: "clean", color: "#f4f7f8", scale: 0.86, note: "Clean" },
-    { text: "404", family: "display", color: "#a78bfa", scale: 0.86, note: "Figures" },
+    { glyphs: g("CIRCUIT"), style: "clean", color: "#f4f7f8", scale: 0.86 },
+    { glyphs: [DIGITS[4], DIGITS[0], DIGITS[4]], style: "default", color: "#a78bfa", scale: 0.86 },
   ],
   [
-    { text: "SIGNAL", family: "display", features: '"ss01" 1', color: "#fbbf24", scale: 0.8, note: "ss01" },
-    { text: "NODE", family: "display", color: "#38bdf8", scale: 0.8, note: "Circuit" },
+    { glyphs: g("SIGNAL"), style: "ss01", color: "#fbbf24", scale: 0.8 },
+    { glyphs: g("NODE"), style: "default", color: "#38bdf8", scale: 0.8 },
   ],
   [
-    { text: "Route", family: "display", color: "#a3e635", scale: 0.86, note: "Small caps" },
-    { text: "LIVE", family: "clean", color: "#f4f7f8", scale: 0.62, note: "Clean" },
-    { text: "2.0", family: "display", color: "var(--color-accent)", scale: 0.86, note: "Circuit" },
+    { glyphs: ["R", "o", "u", "t", "e"], style: "default", color: "#a3e635", scale: 0.86 },
+    { glyphs: g("LIVE"), style: "clean", color: "#f4f7f8", scale: 0.62 },
+    { glyphs: [DIGITS[2], "period", DIGITS[0]], style: "default", color: "var(--color-accent)", scale: 0.86 },
   ],
 ];
 
+const data = specimen as unknown as SpecimenData;
+const { ascent } = data.metrics;
+const FOOT = 60; // font units kept below the baseline for nodes and heavy strokes
+
+/** One compact path per letter: absolute move to each line's start, then relative steps. */
+function compactPath(lines: number[][], dx: number): string {
+  let d = "";
+  for (const flat of lines) {
+    let px = flat[0] + dx;
+    let py = ascent - flat[1];
+    d += `M${px} ${py}l`;
+    for (let i = 2; i < flat.length; i += 2) {
+      const x = flat[i] + dx;
+      const y = ascent - flat[i + 1];
+      const sx = x - px;
+      const sy = y - py;
+      d += `${i > 2 && sx >= 0 ? " " : ""}${sx}${sy >= 0 ? " " : ""}${sy}`;
+      px = x;
+      py = y;
+    }
+  }
+  return d;
+}
+
 /**
- * Opening wall of words set in the font. Each word wipes in like a trace being routed
- * (`.hero-word` in globals.css); reduced motion shows the finished wall.
- * Decorative: the page's h1 follows it.
+ * Opening wall of words, drawn on the server from the font's own centre lines so each
+ * letter can be re-stroked live. Words wipe in like routed traces (`.hero-word`), then
+ * HeroWave runs a weight wave through the letters. Decorative: the page's h1 follows.
  */
 export function HeroWall() {
   let order = 0;
+  let letterIndex = 0;
   return (
-    <div aria-hidden="true" className="select-none">
+    <HeroWave>
       {ROWS.map((row, r) => (
         <div
           key={r}
-          className="flex flex-wrap items-baseline justify-between gap-x-[0.18em] text-[clamp(2.6rem,12vw,9.5rem)] leading-[1.02]"
+          className="flex flex-wrap items-end justify-between gap-x-[0.18em] text-[clamp(2.6rem,12vw,9.5rem)] leading-none"
         >
           {row.map((word) => {
+            const placed = layoutWord(data, word.glyphs, word.style);
+            const last = placed[placed.length - 1];
+            const width = last.x + last.shape.adv;
+            const height = ascent + FOOT;
+            const base = word.style === "clean" ? data.stroke.clean : data.stroke.display;
+            const dots = word.style !== "clean";
             const delay = 0.08 + order++ * 0.09;
             return (
               <span
-                key={word.text}
-                title={word.note}
-                className="hero-word inline-block whitespace-nowrap"
+                key={word.glyphs.join("")}
+                className="hero-word inline-block"
                 style={
                   {
-                    fontFamily: word.family === "display" ? "var(--font-dragox-display)" : "var(--font-dragox-clean)",
-                    fontFeatureSettings: word.features,
                     fontSize: `${word.scale}em`,
                     color: word.color,
+                    marginBottom: `-${FOOT / 1000}em`,
                     "--wipe-delay": `${delay.toFixed(2)}s`,
                   } as CSSProperties
                 }
               >
-                {word.text}
+                <svg
+                  viewBox={`0 0 ${width} ${height}`}
+                  width={`${width / 1000}em`}
+                  height={`${height / 1000}em`}
+                  overflow="visible"
+                  className="block"
+                >
+                  {placed.map(({ shape, x }) => (
+                    <g
+                      key={letterIndex}
+                      className="hero-letter"
+                      data-i={letterIndex++}
+                      data-base={base}
+                      data-dot={dots ? data.stroke.dot : 0}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={base}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d={compactPath(shape.lines, x)} />
+                      {dots &&
+                        dotsToPoints(shape.dots, ascent, x).map(([cx, cy], i) => (
+                          <circle key={`d${i}`} cx={cx} cy={cy} r={data.stroke.dot} fill="currentColor" stroke="none" />
+                        ))}
+                    </g>
+                  ))}
+                </svg>
               </span>
             );
           })}
         </div>
       ))}
-    </div>
+    </HeroWave>
   );
 }

@@ -1,7 +1,8 @@
 "use client";
 
+import { ChipButton } from "@/components/ChipButton";
 import { useState } from "react";
-import { Check, Copy, Download, FileText } from "lucide-react";
+import { Check, Copy, Download } from "lucide-react";
 import { DOWNLOAD_BASE } from "./data";
 
 const FILES = [
@@ -54,23 +55,12 @@ export function DownloadPanel() {
           </p>
 
           <div className="mt-6 flex flex-wrap gap-3">
-            <a
-              href={`${DOWNLOAD_BASE}/DragoxCircuit-2.000.zip`}
-              download
-              className="liquid-control liquid-control-pill liquid-control-primary inline-flex min-h-11 items-center gap-2 px-6 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0F13]"
-            >
-              <Download className="h-4 w-4" aria-hidden="true" />
-              Download all (ZIP, 185 KB)
-            </a>
-            <a
-              href={`${DOWNLOAD_BASE}/OFL.txt`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/[0.12] px-5 py-3 text-sm text-white/70 transition-colors hover:border-white/30 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            >
-              <FileText className="h-4 w-4" aria-hidden="true" />
-              License (OFL 1.1)
-            </a>
+            <ChipButton href={`${DOWNLOAD_BASE}/DragoxCircuit-2.000.zip`} download meta="ZIP · 185 KB">
+              Download all
+            </ChipButton>
+            <ChipButton href={`${DOWNLOAD_BASE}/OFL.txt`} variant="ghost" icon="license" external>
+              License · OFL 1.1
+            </ChipButton>
           </div>
 
           <ul className="mt-6 divide-y divide-white/[0.06] rounded-xl border border-white/[0.08]">

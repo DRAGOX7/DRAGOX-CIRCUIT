@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Download } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { ChipButton } from "@/components/ChipButton";
 import { DownloadPanel } from "./DownloadPanel";
 import { GlyphExplorer } from "./GlyphExplorer";
-import { HeroWall } from "./HeroWall";
 import { PipelineStrip } from "./PipelineStrip";
 import { SpecSheet } from "./SpecSheet";
 import { SpecimenStage } from "./SpecimenStage";
@@ -17,9 +16,10 @@ type LoadState = { status: "loading" } | { status: "ready"; data: SpecimenData }
 
 /**
  * Client root of the specimen site. Glyph geometry (~210 KB JSON, ~67 KB gzipped) is
- * fetched here so it never ships with the page's JS or with any other route.
+ * fetched here so it never ships with the page's JS. `hero` is rendered on the server,
+ * which inlines only the hero words' paths, and passed in as a prop for the same reason.
  */
-export function DragoxSpecimen() {
+export function DragoxSpecimen({ hero }: { hero: ReactNode }) {
   const [state, setState] = useState<LoadState>({ status: "loading" });
 
   useEffect(() => {
@@ -40,7 +40,7 @@ export function DragoxSpecimen() {
     <div className={`${dragoxDisplay.variable} ${dragoxClean.variable}`}>
       {/* Intro */}
       <header className="mx-auto max-w-6xl px-4 pb-14 pt-10 sm:px-6 sm:pt-14">
-        <HeroWall />
+        {hero}
         <p className="mt-12 font-mono text-xs uppercase tracking-[0.22em] text-accent/80">Typeface · Version 2.000 · OFL 1.1</p>
         <h1 className="mt-3 max-w-3xl text-3xl font-bold tracking-tight text-white sm:text-5xl">
           Dragox Circuit is a free circuit-trace typeface.
@@ -59,19 +59,12 @@ export function DragoxSpecimen() {
           : drawn by hand years ago, then rebuilt in Python as version 2.0. Free for any project.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
-          <a
-            href="#download"
-            className="liquid-control liquid-control-pill liquid-control-primary inline-flex min-h-11 items-center gap-2 px-6 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-black"
-          >
-            <Download className="h-4 w-4" aria-hidden="true" />
-            Download free
-          </a>
-          <a
-            href="#glyphs"
-            className="inline-flex min-h-11 items-center rounded-full border border-white/[0.12] px-5 py-3 text-sm text-white/70 transition-colors hover:border-white/30 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-          >
+          <ChipButton href="#download" meta="Free">
+            Download
+          </ChipButton>
+          <ChipButton href="#glyphs" variant="ghost" icon={null}>
             Browse glyphs
-          </a>
+          </ChipButton>
         </div>
       </header>
 

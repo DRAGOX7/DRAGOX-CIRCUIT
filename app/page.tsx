@@ -1,6 +1,7 @@
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { DragoxSpecimen } from "@/components/specimen/DragoxSpecimen";
+import { HeroWall } from "@/components/specimen/HeroWall";
 
 export default function Home() {
   return (
@@ -14,7 +15,7 @@ export default function Home() {
       <div id="top" />
       <SiteHeader />
       <main id="main">
-        <DragoxSpecimen />
+        <DragoxSpecimen hero={<HeroWall />} />
       </main>
       <SiteFooter />
     </>
