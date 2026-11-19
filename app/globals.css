@@ -171,3 +171,22 @@
     transform: none;
   }
 }
+
+/* --- Hero wall: each word wipes in left to right, like a trace being routed --- */
+.hero-word {
+  clip-path: inset(-30% 100% -30% -10%);
+  animation: hero-wipe 0.85s cubic-bezier(0.65, 0, 0.35, 1) var(--wipe-delay, 0s) forwards;
+}
+
+@keyframes hero-wipe {
+  to {
+    clip-path: inset(-30% -10% -30% -10%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-word {
+    animation: none;
+    clip-path: none;
+  }
+}

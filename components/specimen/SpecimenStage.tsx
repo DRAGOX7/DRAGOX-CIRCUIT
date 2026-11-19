@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState, type PointerEvent } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Play } from "lucide-react";
+import { MoveHorizontal, Play, RotateCcw } from "lucide-react";
 import { DrawnTraces } from "./DrawnTraces";
 import {
   STYLE_LABELS,
@@ -16,13 +16,18 @@ import {
 const WORD = ["D", "R", "A", "G", "O", "X"];
 const STYLES: GlyphStyle[] = ["default", "ss01", "clean"];
 const LABEL_SPACE = 150; // font units above the ascender for the width labels
+const MIN_WEIGHT = 4;
+const MAX_WEIGHT = 64;
+const DRAG_RANGE = 90; // weight units across the full width of the stage
 
 type Layer = "guides" | "skeleton" | "nodes";
 
 /**
  * Hero of the specimen: DRAGOX drawn from the font's own centre lines, with switchable
  * construction layers (metric guides, the 1-unit skeleton, highlighted nodes) and a style
- * switch between the circuit, stub-free and Clean drawings.
+ * switch between the circuit, stub-free and Clean drawings. Dragging sideways across the
+ * letters (or the slider) re-strokes the same centre lines at another line weight, which is
+ * what the build pipeline does for the Circuit and Clean families.
  */
 export function SpecimenStage({ data }: { data: SpecimenData }) {
   const reduceMotion = useReducedMotion();
@@ -33,6 +38,10 @@ export function SpecimenStage({ data }: { data: SpecimenData }) {
     nodes: true,
   });
   const [run, setRun] = useState(0);
+  const [weight, setWeight] = useState<number | null>(null);
+  const [dragged, setDragged] = useState(false);
+  const weightId = useId();
+  const drag = useRef<{ x: number; start: number; width: number; frame: number } | null>(null);
 
   const { ascent, descent, capHeight, smallCapHeight } = data.metrics;
   const placed = useMemo(() => layoutWord(data, WORD, style), [data, style]);
@@ -40,7 +49,31 @@ export function SpecimenStage({ data }: { data: SpecimenData }) {
   const top = ascent; // y-up font units -> y-down SVG units
   const vbY = -LABEL_SPACE;
   const vbH = ascent - descent + LABEL_SPACE;
-  const strokeWidth = style === "clean" ? data.stroke.clean : data.stroke.display;
+  const baseWidth = style === "clean" ? data.stroke.clean : data.stroke.display;
+  const strokeWidth = weight ?? baseWidth;
+  // Nodes grow more slowly than the lines so heavy weights don't turn into blobs.
+  const dotRadius = Math.round(data.stroke.dot * Math.sqrt(strokeWidth / data.stroke.display));
+  const clampWeight = (w: number) => Math.round(Math.min(MAX_WEIGHT, Math.max(MIN_WEIGHT, w)));
+
+  const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    drag.current = { x: e.clientX, start: strokeWidth, width: e.currentTarget.clientWidth || 1, frame: 0 };
+  };
+  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d) return;
+    const next = clampWeight(d.start + ((e.clientX - d.x) / d.width) * DRAG_RANGE);
+    // One state update per frame at most.
+    cancelAnimationFrame(d.frame);
+    d.frame = requestAnimationFrame(() => {
+      setWeight(next);
+      setDragged(true);
+    });
+  };
+  const endDrag = () => {
+    drag.current = null;
+  };
   const showDots = style !== "clean";
   const nodeCount = placed.reduce((sum, p) => sum + p.shape.dots.length / 2, 0);
 
@@ -64,7 +97,14 @@ export function SpecimenStage({ data }: { data: SpecimenData }) {
       <div className="relative overflow-hidden rounded-[1.6rem] border border-white/[0.08] bg-[#060a0c] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
         {/* Drawing area: guide labels are HTML so they stay readable at any scale. */}
         <div className="relative px-4 pb-4 pt-6 sm:px-10 sm:pb-8 sm:pt-10 lg:pl-40">
-          <div className="relative" style={{ aspectRatio: `${totalWidth} / ${vbH}` }}>
+          <div
+            className="relative cursor-ew-resize touch-pan-y select-none"
+            style={{ aspectRatio: `${totalWidth} / ${vbH}` }}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={endDrag}
+            onPointerCancel={endDrag}
+          >
             <svg
               viewBox={`0 ${vbY} ${totalWidth} ${vbH}`}
               className="absolute inset-0 h-full w-full overflow-visible text-accent"
@@ -122,7 +162,7 @@ export function SpecimenStage({ data }: { data: SpecimenData }) {
                             key={`d-${i}`}
                             cx={cx}
                             cy={cy}
-                            r={data.stroke.dot}
+                            r={dotRadius}
                             className="dragox-dot"
                             style={{ animationDelay: `${(start + 0.65 + i * 0.015).toFixed(3)}s` }}
                           />
@@ -150,7 +190,7 @@ export function SpecimenStage({ data }: { data: SpecimenData }) {
                         key={`n-${gi}-${i}`}
                         cx={cx}
                         cy={cy}
-                        r={data.stroke.dot + 16}
+                        r={dotRadius + 16}
                         strokeWidth={1}
                         vectorEffect="non-scaling-stroke"
                       />
@@ -189,10 +229,19 @@ export function SpecimenStage({ data }: { data: SpecimenData }) {
               </div>
             )}
           </div>
+          <p
+            aria-hidden="true"
+            className={`pointer-events-none mt-3 flex items-center justify-center gap-2 font-mono text-[11px] text-white/45 transition-opacity duration-500 ${
+              dragged ? "opacity-0" : "opacity-100"
+            }`}
+          >
+            <MoveHorizontal className="h-3.5 w-3.5" />
+            Drag across the letters to change the line weight
+          </p>
         </div>
 
         {/* Controls */}
-        <div className="flex flex-col gap-4 border-t border-white/[0.07] px-4 py-4 sm:px-10 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-4 border-t border-white/[0.07] px-4 py-4 sm:px-10 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
           <div role="radiogroup" aria-label="Glyph style" className="relative grid grid-cols-3 rounded-full border border-white/[0.1] bg-white/[0.03] p-1">
             {STYLES.map((s) => {
               const selected = style === s;
@@ -202,7 +251,10 @@ export function SpecimenStage({ data }: { data: SpecimenData }) {
                   type="button"
                   role="radio"
                   aria-checked={selected}
-                  onClick={() => setStyle(s)}
+                  onClick={() => {
+                    setStyle(s);
+                    setWeight(null);
+                  }}
                   className={`relative min-h-10 rounded-full px-4 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                     selected ? "text-accent-foreground" : "text-white/60 hover:text-white"
                   }`}
@@ -218,6 +270,33 @@ export function SpecimenStage({ data }: { data: SpecimenData }) {
                 </button>
               );
             })}
+          </div>
+
+          <div className="flex min-w-[14rem] flex-1 items-center gap-3 lg:max-w-xs">
+            <label htmlFor={weightId} className="shrink-0 font-mono text-[11px] uppercase tracking-[0.16em] text-white/50">
+              Weight
+            </label>
+            <input
+              id={weightId}
+              type="range"
+              min={MIN_WEIGHT}
+              max={MAX_WEIGHT}
+              value={strokeWidth}
+              onChange={(e) => setWeight(Number(e.target.value))}
+              aria-valuetext={`${strokeWidth} units`}
+              className="h-11 flex-1 accent-[var(--color-accent)]"
+            />
+            <span className="w-8 text-right font-mono text-xs tabular-nums text-white/60">{strokeWidth}</span>
+            <button
+              type="button"
+              onClick={() => setWeight(null)}
+              disabled={weight === null}
+              aria-label="Reset line weight"
+              title="Reset line weight"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/[0.12] text-white/60 transition-colors hover:border-white/30 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-30"
+            >
+              <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
           </div>
 
           <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Construction layers">
@@ -253,7 +332,8 @@ export function SpecimenStage({ data }: { data: SpecimenData }) {
 
         <p className="border-t border-white/[0.07] px-4 py-3 font-mono text-[11px] text-white/45 sm:px-10">
           {placed.length} glyphs · {nodeCount} nodes · {totalWidth} units wide · line {strokeWidth} units
-          {showDots ? ` · node radius ${data.stroke.dot}` : " · no nodes"}
+          {weight !== null && weight !== baseWidth ? ` (font: ${baseWidth})` : ""}
+          {showDots ? ` · node radius ${dotRadius}` : " · no nodes"}
         </p>
       </div>
     </section>

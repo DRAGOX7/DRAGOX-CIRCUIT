@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { Download } from "lucide-react";
 import { DownloadPanel } from "./DownloadPanel";
 import { GlyphExplorer } from "./GlyphExplorer";
+import { HeroWall } from "./HeroWall";
 import { PipelineStrip } from "./PipelineStrip";
+import { SpecSheet } from "./SpecSheet";
 import { SpecimenStage } from "./SpecimenStage";
 import { FeaturesRow, StylesRow, TypeTester } from "./StylesAndFeatures";
 import { SPECIMEN_URL, type SpecimenData } from "./data";
@@ -37,15 +39,13 @@ export function DragoxSpecimen() {
   return (
     <div className={`${dragoxDisplay.variable} ${dragoxClean.variable}`}>
       {/* Intro */}
-      <header className="mx-auto max-w-6xl px-4 pb-10 pt-14 sm:px-6 sm:pt-20">
-        <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent/80">Typeface · Version 2.000 · OFL 1.1</p>
-        <h1
-          className="mt-4 text-[clamp(2.75rem,9vw,6.5rem)] leading-[0.95] text-accent"
-          style={{ fontFamily: "var(--font-dragox-display)" }}
-        >
-          DRAGOX CIRCUIT
+      <header className="mx-auto max-w-6xl px-4 pb-14 pt-10 sm:px-6 sm:pt-14">
+        <HeroWall />
+        <p className="mt-12 font-mono text-xs uppercase tracking-[0.22em] text-accent/80">Typeface · Version 2.000 · OFL 1.1</p>
+        <h1 className="mt-3 max-w-3xl text-3xl font-bold tracking-tight text-white sm:text-5xl">
+          Dragox Circuit is a free circuit-trace typeface.
         </h1>
-        <p className="mt-6 max-w-2xl text-lg leading-relaxed text-white/70">
+        <p className="mt-5 max-w-2xl text-lg leading-relaxed text-white/70">
           A display typeface where every letter is a single traced line with junction nodes, like a route on a circuit
           board. Designed by{" "}
           <a
@@ -76,6 +76,7 @@ export function DragoxSpecimen() {
       </header>
 
       <div className="mx-auto flex max-w-6xl flex-col gap-20 px-4 pb-24 sm:px-6">
+        <SpecSheet />
         {state.status === "ready" ? (
           <>
             <SpecimenStage data={state.data} />
